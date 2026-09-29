@@ -1,7 +1,18 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>金融犯罪调查</title>
-<style>body{font:15px/1.6 system-ui,sans-serif;max-width:1200px;margin:28px auto;padding:0 20px;color:#24313c}table{border-collapse:collapse;width:100%;margin:14px 0}th,td{border:1px solid #d3dce3;padding:7px}th{background:#eef4f7}.card{background:#f7f2ff;border-left:5px solid #7256b7;padding:12px 16px}code{background:#edf0f2;padding:2px 5px}</style>
-<h1>金融犯罪调查与制裁筛查</h1><div class="card">案件严格按角色和调查员分配过滤。写入接口需要 <code>X-User</code>、<code>X-Role</code>。</div>
+<style>body{font:15px/1.6 system-ui,sans-serif;max-width:1200px;margin:28px auto;padding:0 20px;color:#24313c}table{border-collapse:collapse;width:100%;margin:14px 0}th,td{border:1px solid #d3dce3;padding:7px}th{background:#eef4f7}.card{background:#f7f2ff;border-left:5px solid #7256b7;padding:12px 16px}code{background:#edf0f2;padding:2px 5px}.muted{color:#667785;font-size:13px}</style>
+<h1>金融犯罪调查与制裁筛查</h1><div class="card">名单按批次发布不可变快照；交易入账时留档命中的批次版本和明细。写入接口需要 <code>X-User</code>、<code>X-Role</code>。</div>
+<h2>名单批次</h2><table id="snapshots"><thead><tr><th>ID</th><th>名单</th><th>版本</th><th>批次号</th><th>条目数</th><th>来源</th><th>发布人</th><th>时间</th></tr></thead><tbody></tbody></table>
+<h2>夜间复核待办</h2><table id="todos"><thead><tr><th>ID</th><th>快照</th><th>交易</th><th>状态</th><th>命中明细</th><th>处理人</th></tr></thead><tbody></tbody></table>
 <h2>案件</h2><table id="cases"><thead><tr><th>案件号</th><th>状态</th><th>风险</th><th>调查员</th><th>报告</th></tr></thead><tbody></tbody></table>
-<h2>交易</h2><table id="txns"><thead><tr><th>编号</th><th>金额</th><th>币种</th><th>状态</th><th>原因</th></tr></thead><tbody></tbody></table>
+<h2>交易</h2><table id="txns"><thead><tr><th>编号</th><th>金额</th><th>币种</th><th>状态</th><th>筛查版本</th><th>原因</th></tr></thead><tbody></tbody></table>
 <h2>审计时间线</h2><ol id="timeline"></ol>
-<script>async function load(){const d=await fetch('/api/state').then(r=>r.json());document.querySelector('#cases tbody').innerHTML=d.cases.map(r=>`<tr><td>${r.case_no}</td><td>${r.status}</td><td>${r.risk_score}</td><td>${r.assignee||''}</td><td>${r.report_ref||''}</td></tr>`).join('');document.querySelector('#txns tbody').innerHTML=d.transactions.map(r=>`<tr><td>${r.txn_ref}</td><td>${r.amount}</td><td>${r.currency}</td><td>${r.status}</td><td>${r.reason}</td></tr>`).join('');document.querySelector('#timeline').innerHTML=d.timeline.slice(0,20).map(x=>`<li>${x.created_at} ${x.action} ${x.details}</li>`).join('')}load()</script></html>
+<script>
+async function load(){
+  const d=await fetch('/api/state').then(r=>r.json());
+  document.querySelector('#snapshots tbody').innerHTML=(d.watchlist_snapshots||[]).map(r=>`<tr><td>${r.id}</td><td>${r.list_name}</td><td>${r.version}</td><td>${r.batch_no}</td><td>${r.entry_count}</td><td>${r.source}</td><td>${r.created_by}</td><td class="muted">${r.created_at}</td></tr>`).join('');
+  document.querySelector('#todos tbody').innerHTML=(d.screening_todos||[]).map(r=>`<tr><td>${r.id}</td><td>${r.snapshot_id}</td><td>${r.match_details.txn_ref||r.transaction_id}</td><td>${r.status}</td><td><code>${r.match_details.list_name}:${r.match_details.entry_name}</code></td><td>${r.resolved_by||''}</td></tr>`).join('');
+  document.querySelector('#cases tbody').innerHTML=d.cases.map(r=>`<tr><td>${r.case_no}</td><td>${r.status}</td><td>${r.risk_score}</td><td>${r.assignee||''}</td><td>${r.report_ref||''}</td></tr>`).join('');
+  document.querySelector('#txns tbody').innerHTML=d.transactions.map(r=>`<tr><td>${r.txn_ref}</td><td>${r.amount}</td><td>${r.currency}</td><td>${r.status}</td><td>${r.screening_version||''}</td><td>${r.reason}</td></tr>`).join('');
+  document.querySelector('#timeline').innerHTML=d.timeline.slice(0,20).map(x=>`<li>${x.created_at} ${x.action} ${x.details}</li>`).join('')
+}
+load()</script></html>
